@@ -1,0 +1,4 @@
+# Exclude secrets, environment variables, and local data
+.env
+n8n_data/
+*.log

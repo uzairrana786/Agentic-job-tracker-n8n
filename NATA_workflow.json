@@ -1,0 +1,300 @@
+{
+  "name": "Notion Application tracker Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "f607133f-ab53-4354-9dda-e4d93094176a",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -224,
+        208
+      ],
+      "id": "38c84b72-715f-42c7-ad92-6150f2c46f4a",
+      "name": "Webhook",
+      "webhookId": "f607133f-ab53-4354-9dda-e4d93094176a"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Fetch Metadata from Gemini Node 1\nconst metadataItem = $('Gemini - Metadata Extractor').first()?.json || {};\nlet metadataText = metadataItem.content?.parts?.[0]?.text || '';\n\n// Clean JSON code blocks if present\nmetadataText = metadataText.replace(/```json|```/g, '').trim();\n\nlet parsedData = {};\ntry {\n  parsedData = JSON.parse(metadataText);\n} catch (e) {\n  parsedData = {};\n}\n\n// 2. Fetch Formatted Markdown from Gemini Node 2\nconst markdownItem = $('Gemini - Markdown Formatter').first()?.json || {};\nlet formattedAdBody = markdownItem.content?.parts?.[0]?.text || 'No advertisement text captured.';\n\n// Strip standard markdown code fences (```markdown ... ``` or ```json ... ```)\nformattedAdBody = formattedAdBody.replace(/```markdown|```json|```/g, '').trim();\n\n// 3. Extract purely the Markdown content starting from the first '#' heading symbol\n// Discards leading braces {, JSON keys like \"content\": \", and opening quotes\nconst headerMatch = formattedAdBody.match(/#[\\s\\S]*/);\nif (headerMatch) {\n  formattedAdBody = headerMatch[0];\n}\n\n// Clean trailing JSON quotes or closing braces at the end of the text\nformattedAdBody = formattedAdBody.replace(/[\"\\}\\s]+$/, '').trim();\n\n// Unescape literal backslash newlines (\\n\\n) into real line breaks\nformattedAdBody = formattedAdBody.replace(/\\\\n/g, '\\n');\n\n// 4. Extract metadata properties\nconst jobTitle = parsedData.job_title || parsedData.title || '';\nconst companyName = parsedData.company_or_university || parsedData.company || parsedData.university || '';\nconst jobType = parsedData.type === 'PhD' ? 'PhD' : 'Industry';\nconst icon = jobType === 'PhD' ? '🎓' : '💼';\n\n// Format Title: 💼/🎓 Position Title - Company / University\nlet fullTitle = '';\nif (jobTitle && companyName) {\n  fullTitle = icon + ' ' + jobTitle + ' - ' + companyName;\n} else if (jobTitle) {\n  fullTitle = icon + ' ' + jobTitle;\n} else {\n  fullTitle = icon + ' New Job Application';\n}\n\n// Format Deadline\nconst deadline = parsedData.deadline && parsedData.deadline !== 'null' && parsedData.deadline !== 'N/A' ? parsedData.deadline : '';\nconst deadlineText = deadline ? deadline : 'Not Mentioned';\n\n// Build Application Requirements Checklist\nconst phdChecklist = \"- [ ] Targeted Academic CV\\n- [ ] Cover Letter / Motivation Letter\\n- [ ] Master's Degree Certificate & Transcript of Records\\n- [ ] Master's Thesis / Research Proposal Abstract\\n- [ ] Reference Letters / Recommendations\";\nconst industryChecklist = \"- [ ] Targeted Industry CV / Resume\\n- [ ] Tailored Cover Letter (Anschreiben)\\n- [ ] Master's Degree Certificate & Transcript of Records\\n- [ ] Work Certificates (Arbeitszeugnisse) & Reference Letters\\n- [ ] Submitted via Company Career Portal / LinkedIn / Email\";\n\nconst checklistMarkdown = jobType === 'PhD' ? phdChecklist : industryChecklist;\n\n// 5. Assemble Complete Page Body\nconst fullPageContent = [\n  \"> **Application Deadline:** \" + deadlineText,\n  \"\",\n  \"## 📄 Original Job Advertisement & Requirements\",\n  \"\",\n  formattedAdBody,\n  \"\",\n  \"---\",\n  \"\",\n  \"## 🎯 Application Requirements Checklist\",\n  checklistMarkdown,\n  \"\",\n  \"---\",\n  \"\",\n  \"## 📞 Interview Preparation & Progress\",\n  \"\",\n  \"- **HR / Professor Screening Call Date:**\",\n  \"- **Technical / Research Interview Date:**\",\n  \"- **Key Notes & Questions to Ask:**\"\n].join(\"\\n\");\n\nreturn [\n  {\n    json: {\n      title: fullTitle,\n      company_or_university: companyName || 'N/A',\n      type: jobType,\n      deadline: deadline,\n      contact_person: parsedData.contact_person || 'N/A',\n      contact_email: parsedData.contact_email || 'N/A',\n      page_content: fullPageContent,\n      url: $('Webhook').item?.json?.body?.url || ''\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        208
+      ],
+      "id": "6609d256-a274-4ab8-b71c-145142f5f596",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "dataSourceId": {
+          "__rl": true,
+          "value": "3eb6e327-cca2-80a6-b7e5-000b7e46162d",
+          "mode": "list",
+          "cachedResultName": "3eb6e327-cca2-80a6-b7e5-000b7e46162d",
+          "cachedResultUrl": "https://app.notion.com/p/3eb6e327cca280a3abeaed7bb447ead7"
+        },
+        "title": "={{ $json.title }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Company / University|rich_text",
+              "textContent": "={{ $json.company_or_university }}"
+            },
+            {
+              "key": "Application Deadline|date",
+              "date": "={{ $json.deadline ? $json.deadline : \"\" }}"
+            },
+            {
+              "key": "Contact Person / Professor|rich_text",
+              "textContent": "={{ $json.contact_person }}"
+            },
+            {
+              "key": "Contact / Professor Email|email",
+              "emailValue": "={{ $json.contact_email }}"
+            },
+            {
+              "key": "Job Link|url",
+              "urlValue": "={{ $json.url }}"
+            },
+            {
+              "key": "Job Type|select",
+              "selectValue": "={{ $json.type }}"
+            }
+          ]
+        },
+        "contentType": "markdown",
+        "markdown": "={{ $json.page_content }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 3,
+      "position": [
+        672,
+        208
+      ],
+      "id": "364a23f6-bef2-4817-9673-dbd7e2381899",
+      "name": "Create a database page",
+      "credentials": {
+        "notionApi": {
+          "id": "UrHQxWcLnsWAVWqG",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.1-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.1-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an expert AI recruiter assistant. Extract structured job posting metadata from the provided raw page content.\n\nOutput ONLY a valid raw JSON object (no markdown code blocks, no trailing text) with these exact keys:\n{\n  \"company_or_university\": \"Name of the hiring company or university\",\n  \"job_title\": \"Exact position title from the posting\",\n  \"type\": \"Industry\" or \"PhD\",\n  \"deadline\": \"YYYY-MM-DD\" (or null if not explicitly listed),\n  \"contact_person\": \"Full name of the contact person or professor listed in the advertisement\" (or \"N/A\"),\n  \"contact_email\": \"Email address of the contact person or professor listed in the advertisement\" (or \"N/A\")\n}\n\nRaw Page Content:\n{{ $('Webhook').item.json.body.html || $json.data }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        96
+      ],
+      "id": "163eda8a-25f3-4dbf-8ab8-32620375d10d",
+      "name": "Gemini - Metadata Extractor",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "4UjDZlHpznHvSbT0",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.1-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.1-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an expert recruitment assistant. \n\nFormat the following raw job advertisement text into clean, structured Markdown syntax for a Notion page body.\n\nDo NOT output JSON object keys or opening/closing curly braces. Start immediately with standard Markdown headings (###).\n\nFormatting Guidelines:\n- Use ### for section titles (e.g., ### About the Role, ### Key Responsibilities, ### Requirements, ### What We Offer).\n- Use bullet points (- item) for lists.\n- Use **bold text** for important subtitles, tools, or emphasized qualifications.\n- Copy all original text, responsibilities, requirements, and benefits verbatim. Do NOT summarize, shorten, or omit any details or sections.\n\nRaw Page Content:\n{{ $('Webhook').item.json.body.html || $json.data }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        320
+      ],
+      "id": "a089da70-2851-437a-95ae-4fb92e82e75f",
+      "name": "Gemini - Markdown Formatter",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "4UjDZlHpznHvSbT0",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        320,
+        208
+      ],
+      "id": "41253130-3598-48a5-94af-6f2c91896373",
+      "name": "Merge",
+      "notesInFlow": false
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "localhost:8443",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+            "content-length": "7168",
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate, br, zstd",
+            "accept-language": "en-US,en-DE;q=0.9,en-GB;q=0.8,en;q=0.7",
+            "content-type": "application/json",
+            "dnt": "1",
+            "origin": "https://sartorius.wd3.myworkdayjobs.com",
+            "priority": "u=1, i",
+            "referer": "https://sartorius.wd3.myworkdayjobs.com/",
+            "sec-ch-ua": "\"Google Chrome\";v=\"153\", \"Not_A Brand\";v=\"8\", \"Chromium\";v=\"153\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "cross-site",
+            "via": "2.0 Caddy",
+            "x-forwarded-for": "::1",
+            "x-forwarded-host": "localhost:8443",
+            "x-forwarded-proto": "https"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "url": "https://sartorius.wd3.myworkdayjobs.com/en-US/sartoriuscareers/job/Goettingen/Robotics-Integration-Engineer--x-f-m--_R41282",
+            "html": "Skip to main content\nEnglish\nSign In\nCorporate Website\nSearch for Jobs\nRobotics Integration Engineer (x|f|m)  page is loaded\nRobotics Integration Engineer (x|f|m) \nApply\nRobotics Integration Engineer (x|f|m) \nApply\nlocations\nGoettingen\ntime type\nFull time\nposted on\nPosted Today\njob requisition id\nR41282\nJoin our Smart Robotics & Physical AI team as a Robotics Integration Engineer (x|f|m) and help drive the adoption of Intelligent Robotics and Physical AI across our global manufacturing sites. In this role, you will contribute to the integration of intelligent, adaptive and scalable robotics solutions into existing production environments and support the evolution of seamless collaboration between humans and machines.\nWorking closely with business functions, engineering teams and external partners, you will develop, implement and optimize innovative automation and robotics solutions that improve quality, ergonomics and operational efficiency while contributing to better health for more people.\nBased in Goettingen with the possibility to work some days in a week remotely.\n\nGrow With Us – Your Responsibilities\n\nDevelop, test and implement robotics and automation solutions that support intelligent manufacturing processes\nDesign, integrate and validate end effectors, sensors, vision systems and other robotics components for industrial applications\nDevelop and optimize robotic work cells, fixtures and automation solutions with a focus on performance, safety and scalability\nCreate and adapt technical designs and engineering data and support prototyping, testing and commissioning activities\nImplement and integrate interfaces between robots, PLC systems and existing production equipment and support connectivity across industrial control environments\nAnalyze technical data and system performance, identify optimization opportunities and implement engineering improvements to enhance process and equipment performance\nSupport the integration of robotics and production systems using industrial communication protocols such as OPC UA, MQTT, PROFINET and EtherCAT\nContribute to the integration of production and robotics data into enterprise IT systems, data platforms and Manufacturing Execution Systems (MES)\nSupport the implementation of Industrial IoT and edge computing architectures to improve connectivity, transparency and data utilization\nDevelop and implement safety concepts for human-robot collaboration and support validation and CE conformity activities\nInvestigate technical issues, identify root causes and implement sustainable corrective actions to ensure reliable and efficient production operations\nDocument technical findings, engineering results and project progress and communicate recommendations to relevant stakeholders\n\n\n\n\n\nWhat Will Convince Us\n\nDegree in Automation Engineering, Mechatronics, Electrical Engineering, Robotics or a comparable discipline\nSeveral years of experience in the integration, commissioning and optimization of industrial automation or robotics solutions\nStrong knowledge of PLC programming according to IEC 61131-3 and experience with industrial fieldbus technologies such as PROFINET and EtherCAT\nExperience working with industrial robots and cobots, such as ABB, Universal Robots, FANUC, KUKA or comparable systems\nExperience integrating and programming robotics solutions within existing manufacturing environments\nExperience with industrial sensors, machine vision systems and 2D/3D camera technologies is an advantage\nBasic knowledge of 3D CAD systems such as SolidWorks, Inventor or comparable solutions\nPractical experience with OPC UA, MQTT and the integration of IT and OT environments\nBasic knowledge of Python, C# or comparable programming languages is an advantage\nKnowledge of machine safety, functional safety and CE conformity requirements\nExperience in regulated manufacturing environments, such as GMP, pharmaceutical or medical technology industries, is an advantage\nStrong analytical skills and experience applying structured problem-solving and root-cause analysis methodologies\nAbility to collaborate effectively in cross-functional teams and communicate technical concepts to a variety of stakeholders\nFluent English\n\n\n\n\nWhat We Offer\n\nAs a growing global life science company, stock listed on the MDAX and TecDAX, Sartorius offers a wide range of Benefits:\n\nPersonal and Professional Development: Mentoring, leadership programs, Talent Talks, internal seminar offerings\nWork Life Balance: Remote options, flextime, flexible work schedules, sabbaticals, Workation\nAttractive Compensation: Vacation and holiday bonuses including pension benefits with a 35 hr. week and 30 vacation days\nLarge, Modern Campus: Open office spaces, terraces, company restaurant with vegetarian and vegan options, cozy Italian bistro with ice cream sales, fitness studio and daycare center\nMaking An Impact Right From The Start: Comprehensive onboarding, including a virtual online platform even before joining, Welcome Workshops, \"buddy\" as point of contact\nTravel Benefits: car leasing, bike leasing, large free parking garage, good bus connections\nThis position is filled within the Sartorius Stedim Biotech GmbH.\n\n\n\nWe promote diversity and inclusion and welcome applications from people of all nationalities, genders, sexual orientations, religions, age groups, disabilities, and cultural backgrounds.\n\nAbout Sartorius \n\nSartorius is part of the solution in the fight against cancer, dementia, and many other diseases. Our technologies help translate scientific discoveries into real-world medicine faster, so that new therapeutics can reach patients worldwide. \n\nWe look for ambitious team players and creative minds, who want to contribute to this goal and advance their careers in a dynamic global environment.\n\nJoin our global team and become part of the solution. We are looking forward to receiving your application. \nwww.sartorius.com/careers\n\nWelcome\n\nto our Candidate Portal and thank you for your interest in working and growing with us. We look forward to receiving your application. You can check the status anytime in this portal. \n\nYour Application - Tips & Hints\n\nHere you will find the best application tips from our HR team.\n\nInformation on the application process can also be found in this video and under FAQ & Contact.\n\nHow Does It Feel to Work at Sartorius?\n\nIn this brochure you will learn more about us as an employer and your career with us. For further insights, please visit the Sartorius Blog and our career website. \n\nDon't Miss a Job – Your Job Alert\n\nSet up your personal Job Alert now and never miss an opportunity to apply for a job that suits you. Please note that you will receive an initial confirmation message. You'll need to confirm your selection to start receiving job alerts tailored to your preferences. \n\nRead More\nFollow Us\nPrivacy Notice\n© 2026 Workday, Inc. All rights reserved."
+          },
+          "webhookUrl": "http://localhost:5678/webhook/job-ad-parser",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Gemini - Metadata Extractor",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gemini - Markdown Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Create a database page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini - Metadata Extractor": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini - Markdown Formatter": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "b7f4505e-e283-42fe-8945-ffb8b70752aa",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "db320563b33ef06ffe079553f3cad57b7731c35f9d2ac49a58cff3c7cdb7599c"
+  },
+  "nodeGroups": [],
+  "id": "HAp414CtjU36033W",
+  "tags": []
+}
