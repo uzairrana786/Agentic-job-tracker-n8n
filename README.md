@@ -21,21 +21,12 @@ An open-source, local agentic automation pipeline that extracts job advertisemen
 
 ```mermaid
 flowchart LR
-    A["🌐 Browser Trigger<br/>(Bookmarklet / Tampermonkey / Extension)"] --> B["🔒 Caddy HTTPS<br/>localhost:8443"]
-    B --> C["🪝 n8n Webhook<br/>localhost:5678"]
-    C --> D["🤖 Gemini<br/>Metadata Extractor (JSON)"]
-    C --> E["🤖 Gemini<br/>Markdown Formatter"]
-    D --> F["🔀 Merge Node"]
+    A[Browser Trigger] --> B[Caddy HTTPS :8443] --> C[n8n Webhook]
+    C --> D[Gemini: Metadata Extractor]
+    C --> E[Gemini: Markdown Formatter]
+    D --> F[Merge Node]
     E --> F
-    F --> G["🧹 Code (JS)<br/>Parsing & Cleanup"]
-    G --> H["📋 Notion API<br/>Application Tracker"]
- 
-    classDef trigger fill:#e8f1ff,stroke:#4a7bd0,color:#111
-    classDef ai fill:#efe6fa,stroke:#8e75b2,color:#111
-    classDef out fill:#e6f6f1,stroke:#00ad9f,color:#111
-    class A,B,C trigger
-    class D,E ai
-    class F,G,H out
+    F --> G[Code JS] --> H[Notion API]
 ```
 
 ---
