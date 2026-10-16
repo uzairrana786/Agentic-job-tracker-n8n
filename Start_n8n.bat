@@ -45,6 +45,7 @@ if %errorlevel% equ 0 (
 :: 4. Launch Caddy Reverse Proxy detached using PowerShell background process
 echo [INFO] Starting HTTPS reverse proxy on https://localhost:8443 ...
 powershell -Command "Start-Process caddy -ArgumentList 'run' -WindowStyle Hidden" >nul 2>&1
+::caddy reverse-proxy --from https://localhost:8443 --to localhost:5678
 
 :: 5. Dynamic Health Check: Animated dots on a NEW line (3s intervals up to 60s max = 20 retries)
 echo [INFO] Waiting for n8n server to finish initializing...
