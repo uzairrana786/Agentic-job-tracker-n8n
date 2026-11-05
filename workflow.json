@@ -100,7 +100,7 @@
         "messages": {
           "values": [
             {
-              "content": "=You are an expert AI recruiter assistant. Extract structured job posting metadata from the provided raw page content.\n\nOutput ONLY a valid raw JSON object (no markdown code blocks, no trailing text) with these exact keys:\n{\n  \"company_or_university\": \"Name of the hiring company or university\",\n  \"job_title\": \"Exact position title from the posting\",\n  \"type\": \"Industry\" or \"PhD\",\n  \"deadline\": \"YYYY-MM-DD\" (or null if not explicitly listed),\n  \"contact_person\": \"Full name of the contact person or professor listed in the advertisement\" (or \"N/A\"),\n  \"contact_email\": \"Email address of the contact person or professor listed in the advertisement\" (or \"N/A\")\n}\n\nRaw Page Content:\nRaw Page Content:\nRaw Page Content:\n{{ $('Extract from File - PDF to json').first()?.json?.text || $('Webhook').item?.json?.body?.html || $json.data }}"
+              "content": "=You are an expert AI recruiter assistant. Extract structured job posting metadata from the provided raw page content.\n\nOutput ONLY a valid raw JSON object (no markdown code blocks, no trailing text) with these exact keys:\n{\n  \"company_or_university\": \"Name of the hiring company or university\",\n  \"job_title\": \"Exact position title from the posting\",\n  \"type\": \"Industry\" or \"PhD\",\n  \"deadline\": \"YYYY-MM-DD\" (or null if not explicitly listed),\n  \"contact_person\": \"Full name of the contact person or professor listed in the advertisement\" (or \"N/A\"),\n  \"contact_email\": \"Email address of the contact person or professor listed in the advertisement\" (or \"N/A\")\n}\n\nRaw Page Content:\n{{ $('Extract from File - PDF to json').isExecuted ? $('Extract from File - PDF to json').first().json.text : $('Webhook').first().json.body.html }}"
             }
           ]
         },
@@ -139,7 +139,7 @@
         "messages": {
           "values": [
             {
-              "content": "=You are an expert recruitment assistant. \n\nFormat the following raw job advertisement text into clean, structured Markdown syntax for a Notion page body.\n\nDo NOT output JSON object keys or opening/closing curly braces. Start immediately with standard Markdown headings (###).\n\nFormatting Guidelines:\n- Use ### for section titles (e.g., ### About the Role, ### Key Responsibilities, ### Requirements, ### What We Offer).\n- Use bullet points (- item) for lists.\n- Use **bold text** for important subtitles, tools, or emphasized qualifications.\n- Copy all original text, responsibilities, requirements, and benefits verbatim. Do NOT summarize, shorten, or omit any details or sections.\n\nRaw Page Content:\nRaw Page Content:\nRaw Page Content:\n{{ $('Extract from File - PDF to json').first()?.json?.text || $('Webhook').item?.json?.body?.html || $json.data }}"
+              "content": "=You are an expert recruitment assistant. \n\nFormat the following raw job advertisement text into clean, structured Markdown syntax for a Notion page body.\n\nDo NOT output JSON object keys or opening/closing curly braces. Start immediately with standard Markdown headings (###).\n\nFormatting Guidelines:\n- Use ### for section titles (e.g., ### About the Role, ### Key Responsibilities, ### Requirements, ### What We Offer).\n- Use bullet points (- item) for lists.\n- Use **bold text** for important subtitles, tools, or emphasized qualifications.\n- Copy all original text, responsibilities, requirements, and benefits verbatim. Do NOT summarize, shorten, or omit any details or sections.\n\nRaw Page Content:\n{{ $('Extract from File - PDF to json').isExecuted ? $('Extract from File - PDF to json').first().json.text : $('Webhook').first().json.body.html }}"
             }
           ]
         },
@@ -361,7 +361,7 @@
     "binaryMode": "separate",
     "availableInMCP": true
   },
-  "versionId": "167602e8-9de5-4529-91a5-2f447dfa044f",
+  "versionId": "b7b629c7-0c23-413f-a322-d31ea8c86563",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "db320563b33ef06ffe079553f3cad57b7731c35f9d2ac49a58cff3c7cdb7599c"
