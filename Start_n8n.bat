@@ -1,5 +1,5 @@
 @echo off
-title Launching n8n with Docker & HTTPS Pipeline
+title "Launching n8n with Docker and HTTPS Pipeline"
 
 :: 1. Check if Caddy is installed or in PATH
 where caddy >nul 2>&1
@@ -8,9 +8,8 @@ if %errorlevel% neq 0 (
     echo [INFO] Attempting auto-installation via winget...
     winget install --id CaddyServer.Caddy -e --accept-source-agreements --accept-package-agreements
     
-    :: Refresh PATH for current session
-    set "PATH=%LOCALAPPDATA%\Microsoft\WinGet\Packages;%PATH%"
-    set "PATH=C:\Program Files\Caddy;%PATH%"
+    :: Inject the explicit WinGet package path to the environment session
+    set "PATH=%LOCALAPPDATA%\Microsoft\WinGet\Packages\CaddyServer.Caddy_Microsoft.Winget.Source_8wekyb3d8bbwe;%PATH%"
 ) else (
     echo [OK] Caddy is already installed!
 )
@@ -19,7 +18,7 @@ if %errorlevel% neq 0 (
 docker info >nul 2>&1
 if %errorlevel% neq 0 (
     echo [INFO] Starting Docker Desktop...
-    start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+    start "" "C:\Users\Data_Science\AppData\Local\Programs\DockerDesktop\Docker Desktop.exe"
     
     echo [INFO] Waiting for Docker daemon to initialize...
     :wait_for_docker
@@ -42,12 +41,16 @@ if %errorlevel% equ 0 (
     docker run -d --name n8n -p 5678:5678 -e N8N_PROTOCOL=https -e N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true -e N8N_CORS_ENABLED=true -e N8N_CORS_ORIGIN="*" -v n8n_data:/home/node/.n8n n8nio/n8n
 )
 
-:: 4. Launch Caddy Reverse Proxy detached using PowerShell background process
+:: 4. Launch Caddy Reverse Proxy completely invisible (No extra windows)
 echo [INFO] Starting HTTPS reverse proxy on https://localhost:8443 ...
-powershell -Command "Start-Process caddy -ArgumentList 'run' -WindowStyle Hidden" >nul 2>&1
-::caddy reverse-proxy --from https://localhost:8443 --to localhost:5678
+taskkill /f /im caddy.exe >nul 2>&1
 
-:: 5. Dynamic Health Check: Animated dots on a NEW line (3s intervals up to 60s max = 20 retries)
+:: Create a temporary 1-line script to boot Caddy hidden
+echo CreateObject("Wscript.Shell").Run "caddy reverse-proxy --from localhost:8443 --to localhost:5678", 0, False > "%TEMP%\launch_caddy.vbs"
+wscript.exe "%TEMP%\launch_caddy.vbs"
+del "%TEMP%\launch_caddy.vbs"
+
+:: 5. Dynamic Health Check: Animated dots on a NEW line
 echo [INFO] Waiting for n8n server to finish initializing...
 set "retries=0"
 
@@ -61,14 +64,14 @@ if %retries% gtr 30 (
     exit /b 1
 )
 
-:: Print a dot for each 3-second check cycle
+:: Print a dot for each check cycle
 set /p "= ." <nul
 
 timeout /t 2 /nobreak >nul
 curl.exe -s http://localhost:5678 >nul 2>&1
 if %errorlevel% neq 0 goto wait_for_n8n
 
-:: 5a. Continue dot animation on the same dot line for the final 8-second buffer wait
+:: 5a. Continue dot animation on the same dot line for the final buffer wait
 set "buffer_count=0"
 
 :final_buffer_loop
@@ -84,6 +87,6 @@ start https://localhost:8443
 
 echo.
 echo [SUCCESS] n8n is running with local HTTPS on https://localhost:8443
-echo Press any key to close this window.
-pause >nul
-cmd /c exit
+echo This setup window can now be safely closed.
+pause
+exit
